@@ -137,6 +137,7 @@ void Scheduler::process_timers()
         if (coro->get_state() == CoroutineState::IO_WAIT)
         {
             remove_io(coro);
+            coro->set_timed_out(true);
         }
 
         coro->set_state(CoroutineState::RUNABLE);
@@ -236,7 +237,15 @@ bool Scheduler::register_io(int fd, int op, uint64_t timeout_ms, Coroutine* coro
     if (coro->is_interrupted())
     {
         coro->set_interrupted(false);
+        coro->set_timed_out(false);
         errno = EINTR;
+        return false;
+    }
+    if (coro->is_timed_out())
+    {
+        coro->set_interrupted(false);
+        coro->set_timed_out(false);
+        errno = ETIMEDOUT;
         return false;
     }
     return true;

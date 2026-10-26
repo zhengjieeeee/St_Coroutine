@@ -49,6 +49,9 @@ public:
     bool is_interrupted() const { return _interrupted; }
     void set_interrupted(bool interrupted) { _interrupted = interrupted; }
 
+    bool is_timed_out() const { return _timed_out; }
+    void set_timed_out(bool timed_out) { _timed_out = timed_out; }
+
 private:
     static void trampoline();
 
@@ -64,5 +67,6 @@ private:
     free_list*              _pool = nullptr;
     std::set<Coroutine*>    _joiners;
     bool                    _interrupted = false;
+    bool                    _timed_out = false;
 };
 } // namespace St_Coroutine
