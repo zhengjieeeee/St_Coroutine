@@ -31,6 +31,26 @@ ssize_t st_io_recv(int fd, void* buf, size_t len, uint64_t timeout_ms)
     }
 }
 
+ssize_t st_io_recvfrom(int fd, void* buf, size_t len, sockaddr* from, socklen_t* fromlen)
+{
+    Scheduler* sche = Scheduler::get();
+    Coroutine* coro = sche->get_current_coro();
+    if (coro == nullptr) return -1;
+
+    for (;;) 
+    {
+        ssize_t ret = ::recvfrom(fd, buf, len, 0, from, fromlen);
+        if (ret >= 0) return ret;
+        if (errno == EINTR) continue;
+        if (errno != EAGAIN) return -1;
+
+        if (!sche->register_io(fd, EPOLLIN, 0, coro))
+        {
+            return -1;
+        }
+    }
+}
+
 ssize_t st_io_send(int fd, const void* buf, size_t len, uint64_t timeout_ms)
 {
     Scheduler* sche = Scheduler::get();
@@ -71,7 +91,7 @@ int st_io_accept(int fd, uint64_t timeout_ms)
     }
 }
 
-int st_io_connect(int fd, const struct sockaddr* addr, socklen_t addrlen, uint64_t timeout_ms)
+int st_io_connect(int fd, const struct ::sockaddr* addr, socklen_t addrlen, uint64_t timeout_ms)
 {
     Scheduler* sche = Scheduler::get();
     Coroutine* coro = sche->get_current_coro();
@@ -93,39 +113,5 @@ int st_io_connect(int fd, const struct sockaddr* addr, socklen_t addrlen, uint64
         }
         return -1;
     }
-}
-
-int st_io_listen(const struct sockaddr* addr, socklen_t addrlen, int backlog)
-{
-    int fd = ::socket(addr->sa_family, SOCK_STREAM, 0);
-    if (fd == -1) return -1;
-
-    int reuse = 1;
-    if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1)
-    {
-        ::close(fd);
-        return -1;
-    }
-
-    if (::bind(fd, addr, addrlen) == -1)
-    {
-        ::close(fd);
-        return -1;
-    }
-
-    if (::listen(fd, backlog) == -1)
-    {
-        ::close(fd);
-        return -1;
-    }
-
-    int flags = ::fcntl(fd, F_GETFL, 0);
-    if (flags == -1 || ::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
-        ::close(fd);
-        return -1;
-    }
-
-    return fd;
 }
 } // namespace St_Coroutine
