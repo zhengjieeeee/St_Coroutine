@@ -10,6 +10,8 @@ namespace St_Coroutine
 {
 ssize_t st_io_recv(int fd, void* buf, size_t len, uint64_t timeout_ms = 0);
 
+ssize_t st_io_recv_fully(int fd, void* buf, size_t len, uint64_t timeout_ms = 0);
+
 ssize_t st_io_recvfrom(int fd, void* buf, size_t len, sockaddr* from, socklen_t* fromlen);
 
 ssize_t st_io_send(int fd, const void* buf, size_t len, uint64_t timeout_ms = 0);

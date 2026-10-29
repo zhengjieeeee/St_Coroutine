@@ -28,7 +28,48 @@ ssize_t st_io_recv(int fd, void* buf, size_t len, uint64_t timeout_ms)
         {
             return -1;
         }
+        if (coro->is_timed_out())
+        {
+            coro->set_timed_out(false);
+            errno = ETIMEDOUT;
+            return -1;
+        }
     }
+}
+
+ssize_t st_io_recv_fully(int fd, void* buf, size_t len, uint64_t timeout_ms)
+{
+    Scheduler* sche = Scheduler::get();
+    Coroutine* coro = sche->get_current_coro();
+    if (coro == nullptr) return -1;
+
+    char* p = (char*)buf;
+    size_t total = 0;
+    while (total < len)
+    {
+        ssize_t ret = ::recv(fd, p + total, len - total, 0);
+        if (ret > 0)
+        {
+            total += ret;
+            continue;
+        }
+        if (ret == 0) return (ssize_t)total;
+        if (errno == EINTR) continue;
+        if (errno != EAGAIN) return -1;
+
+        if (!sche->register_io(fd, EPOLLIN, timeout_ms, coro))
+        {
+            return -1;
+        }
+        if (coro->is_timed_out())
+        {
+            coro->set_timed_out(false);
+            errno = ETIMEDOUT;
+            return -1;
+        }
+    }
+
+    return (ssize_t)total;
 }
 
 ssize_t st_io_recvfrom(int fd, void* buf, size_t len, sockaddr* from, socklen_t* fromlen)
@@ -68,6 +109,12 @@ ssize_t st_io_send(int fd, const void* buf, size_t len, uint64_t timeout_ms)
         {
             return -1;
         }
+        if (coro->is_timed_out())
+        {
+            coro->set_timed_out(false);
+            errno = ETIMEDOUT;
+            return -1;
+        }
     }
 }
 
@@ -86,6 +133,12 @@ int st_io_accept(int fd, uint64_t timeout_ms)
 
         if (!sche->register_io(fd, EPOLLIN, timeout_ms, coro))
         {
+            return -1;
+        }
+        if (coro->is_timed_out())
+        {
+            coro->set_timed_out(false);
+            errno = ETIMEDOUT;
             return -1;
         }
     }
@@ -107,6 +160,12 @@ int st_io_connect(int fd, const struct ::sockaddr* addr, socklen_t addrlen, uint
         {
             if (!sche->register_io(fd, EPOLLOUT, timeout_ms, coro))
             {
+                return -1;
+            }
+            if (coro->is_timed_out())
+            {
+                coro->set_timed_out(false);
+                errno = ETIMEDOUT;
                 return -1;
             }
             continue;

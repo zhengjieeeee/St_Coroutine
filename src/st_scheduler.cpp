@@ -160,6 +160,7 @@ void Scheduler::process_io_events(epoll_event* events, int num_events)
         _io_wait_map.erase(it);
         ::epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
         coro->set_wait_fd(-1);
+        coro->set_timed_out(false);
 
         remove_timer(coro);
 
