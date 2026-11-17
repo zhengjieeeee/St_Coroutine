@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <functional>
 #include <ucontext.h>
+#include <string>
 
 #include "st_scheduler.h"
 
@@ -52,6 +53,10 @@ public:
     bool is_timed_out() const { return _timed_out; }
     void set_timed_out(bool timed_out) { _timed_out = timed_out; }
 
+    void set_id(const std::string& id);
+
+    std::string get_id();
+
 private:
     static void trampoline();
 
@@ -68,5 +73,6 @@ private:
     std::set<Coroutine*>    _joiners;
     bool                    _interrupted = false;
     bool                    _timed_out = false;
+    std::string             _id;
 };
 } // namespace St_Coroutine

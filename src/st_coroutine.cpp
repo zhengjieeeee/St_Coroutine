@@ -30,6 +30,7 @@ Coroutine::Coroutine(std::function<void()> func, bool joinable, size_t stack_siz
     , _stack(nullptr)
     , _ctx()
     , _state(CoroutineState::RUNABLE)
+    , _id("")
 {
     free_list& pool = Scheduler::get()->get_stack_pool();
     if (_stack_size == pool.chunk_size())
@@ -106,4 +107,15 @@ void Coroutine::interrupt()
         sche->wakeup(this);
     }
 }
+
+void Coroutine::set_id(const std::string& id)
+{
+    _id = id;
+}
+
+std::string Coroutine::get_id()
+{
+    return _id;
+}
+
 } // namespace St_Coroutine
